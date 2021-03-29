@@ -2,7 +2,9 @@
 import time
 import re
 import numpy as np
-#import tensorflow as tf
+import tensorflow as tf
+
+########## DATA PREPROCESSING ##########
 
 lines = (
     open("data/movie_lines.txt", encoding="utf-8", errors="ignore").read().split("\n")
@@ -13,7 +15,6 @@ conversations = (
     .read()
     .split("\n")
 )
-
 
 id2line = {}
 for line in lines:
@@ -27,7 +28,6 @@ for conversation in conversations[:-1]:
         conversation.split(" +++$+++ ")[-1][1:-1].replace("'", "").replace(" ", "")
     )
     conversations_ids.append(_conversation.split(","))
-
 
 questions = []
 answers = []
@@ -87,3 +87,43 @@ for word, count in word2count.items():
     if count >= threshold:
         answerswords2int[word] = word_number
         word_number += 1
+
+tokens = ["<PAD>", "<EOS>", "<OUT>", "<SOS>"]
+for token in tokens:
+    questionswords2int[token] = len(questionswords2int) + 1
+    answerswords2int[token] = len(answerswords2int) + 1
+
+answersints2word = {w_i: w for w, w_i in answerswords2int.items()}
+
+clean_answers = [ans + " <EOS>" for ans in clean_answers]
+
+questions_into_int = []
+for question in clean_questions:
+    ints = []
+    for word in question.split():
+        if word not in questionswords2int:
+            ints.append(questionswords2int["<OUT>"])
+        else:
+            ints.append(questionswords2int[word])
+    questions_into_int.append(ints)
+
+answers_into_int = []
+for answer in clean_answers:
+    ints = []
+    for word in answer.split():
+        if word not in answerswords2int:
+            ints.append(answerswords2int["<OUT>"])
+        else:
+            ints.append(answerswords2int[word])
+    answers_into_int.append(ints)
+
+sorted_clean_questions = []
+sorted_clean_answers = []
+
+for length in range(1, 25 + 1):
+    for index, question in enumerate(questions_into_int):
+        if len(question) == length:
+            sorted_clean_questions.append(questions_into_int[index])
+            sorted_clean_answers.append(answers_into_int[index])
+
+########## BUILDING SEQ2SEQ MODEL ##########
